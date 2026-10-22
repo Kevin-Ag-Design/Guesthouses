@@ -6,10 +6,10 @@
 <title>Kibidula Guest Houses</title>
 <meta name="description" content="Live availability for Lake GH and Ruaha GH at Kibidula.">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://kevin-ag-design.github.io/Guesthouses/">
+<meta property="og:url" content="https://kibidula-guesthouses.github.io/Guesthouses/">
 <meta property="og:title" content="Kibidula Guest Houses · Availability">
 <meta property="og:description" content="Live calendar: Lake GH and Ruaha GH. Green = available, red = booked.">
-<meta property="og:image" content="https://kevin-ag-design.github.io/Guesthouses/preview.png">
+<meta property="og:image" content="https://kibidula-guesthouses.github.io/Guesthouses/preview.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
@@ -69,6 +69,9 @@ main{padding:14px 16px 32px}
   display:grid;place-items:center;font-size:18px}
 .iconbtn:hover{border-color:var(--gold)}
 .today-btn{height:38px;padding:0 14px;border-radius:19px;border:1px solid var(--line);background:var(--card);font-weight:600}
+.share-btn{background:var(--forest);color:#fff;border-color:var(--forest)}
+.share-btn:hover{background:var(--forest-2)}
+.share-btn[disabled]{opacity:.6;cursor:wait}
 #monthLabel{font-size:20px;font-weight:700;margin:0 6px;min-width:150px}
 .legend{margin-left:auto;display:flex;gap:12px;font-size:12.5px;color:var(--muted);flex-wrap:wrap}
 .legend span{display:inline-flex;align-items:center;gap:6px}
@@ -167,6 +170,7 @@ dt{color:var(--muted)} dd{margin:0}
       <button class="iconbtn" id="prev" aria-label="Previous month">‹</button>
       <button class="iconbtn" id="next" aria-label="Next month">›</button>
       <button class="today-btn" id="todayBtn">Today</button>
+      <button class="today-btn share-btn" id="shareBtn">Share picture</button>
     </div>
     <div id="monthLabel" aria-live="polite"></div>
     <div class="legend">
@@ -351,6 +355,76 @@ function openBooking(id){
 let lastFocus=null;
 function showSheet(html){lastFocus=document.activeElement;$("sheet").innerHTML=html;$("scrim").classList.add("open");$("sheet").querySelector(".close").focus()}
 function closeSheet(){$("scrim").classList.remove("open");if(lastFocus)lastFocus.focus()}
+
+// ---------- share as picture ----------
+function rr(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
+function stripes(ctx){
+  const p=document.createElement("canvas");p.width=p.height=20;const c=p.getContext("2d");
+  c.fillStyle="#E8806F";c.fillRect(0,0,20,20);c.strokeStyle="#C0392B";c.lineWidth=7;
+  c.beginPath();c.moveTo(-5,25);c.lineTo(25,-5);c.moveTo(-5,5);c.lineTo(5,-5);c.moveTo(15,25);c.lineTo(25,15);c.stroke();
+  return ctx.createPattern(p,"repeat");
+}
+function drawPicture(){
+  const y=view.getFullYear(),m=view.getMonth();
+  const first=new Date(y,m,1),offset=(first.getDay()+6)%7,start=new Date(y,m,1-offset);
+  const weeks=Math.ceil((offset+new Date(y,m+1,0).getDate())/7);
+  const W=1080,PAD=40,CW=(W-PAD*2)/7,CH=150,TOP=322,H=TOP+weeks*CH+190;
+  const cv=document.createElement("canvas");cv.width=W;cv.height=H;const x=cv.getContext("2d");
+  const F='system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif';
+  x.fillStyle="#F6F4EE";x.fillRect(0,0,W,H);
+  x.fillStyle="#163A2B";x.fillRect(0,0,W,190);x.fillStyle="#C29B3B";x.fillRect(0,190,W,10);
+  x.fillStyle="#FFFFFF";x.font=`800 54px ${F}`;x.fillText("Kibidula Guest Houses",PAD,88);
+  x.fillStyle="#E6C877";x.font=`700 38px ${F}`;x.fillText(`Availability · ${MONTHS[m]} ${y}`,PAD,148);
+  // legend
+  const leg=[["#2E8B57","Available"],["#C0392B","Booked"],[null,"Provisional"]];let lx=PAD;
+  x.font=`600 26px ${F}`;
+  for(const[c,t]of leg){x.fillStyle=c||stripes(x);rr(x,lx,226,30,30,6);x.fill();x.fillStyle="#1D2420";x.fillText(t,lx+42,251);lx+=42+x.measureText(t).width+40}
+  x.fillStyle="#6A716C";x.font=`600 24px ${F}`;x.textAlign="right";x.fillText("Top: Lake GH · Bottom: Ruaha GH",W-PAD,251);x.textAlign="left";
+  // weekday header
+  x.font=`700 22px ${F}`;x.fillStyle="#6A716C";
+  ["MON","TUE","WED","THU","FRI","SAT","SUN"].forEach((d,i)=>{x.textAlign="center";x.fillText(d,PAD+CW*i+CW/2,TOP-12)});x.textAlign="left";
+  const pat=stripes(x);
+  for(let i=0;i<weeks*7;i++){
+    const d=new Date(start);d.setDate(start.getDate()+i);const k=iso(d);
+    const cx=PAD+(i%7)*CW,cy=TOP+Math.floor(i/7)*CH;
+    x.globalAlpha=d.getMonth()===m?1:0.35;
+    x.fillStyle="#FFFDF8";rr(x,cx+4,cy+4,CW-8,CH-8,12);x.fill();
+    x.strokeStyle=k===todayISO?"#C29B3B":"#E3DED2";x.lineWidth=k===todayISO?4:2;x.stroke();
+    x.fillStyle="#1D2420";x.font=`800 28px ${F}`;x.fillText(String(d.getDate()),cx+16,cy+40);
+    CONFIG.HOUSES.forEach((h,j)=>{
+      const b=occupant(h.key,k),by=cy+56+j*44;
+      x.fillStyle=b?(b.status.toLowerCase()==="provisional"?pat:"#C0392B"):"#2E8B57";
+      rr(x,cx+12,by,CW-24,36,7);x.fill();
+      x.fillStyle="#FFFFFF";x.font=`800 20px ${F}`;x.textAlign="center";x.fillText(h.short,cx+CW/2,by+25);x.textAlign="left";
+    });
+    x.globalAlpha=1;
+  }
+  const n=new Date(),fy=TOP+weeks*CH+46;
+  x.fillStyle="#1D2420";x.font=`700 28px ${F}`;
+  x.fillText(`Updated ${n.getDate()} ${MONTHS[n.getMonth()].slice(0,3)} ${n.getFullYear()}, ${n.getHours()}:${pad(n.getMinutes())}`,PAD,fy);
+  x.fillStyle="#6A716C";x.font=`600 24px ${F}`;x.fillText("Tap the live calendar for guest names and the latest changes:",PAD,fy+44);
+  x.fillStyle="#163A2B";x.font=`700 26px ${F}`;x.fillText(pageURL().replace(/^https?:\/\//,""),PAD,fy+86);
+  x.fillStyle="#C29B3B";x.fillRect(0,H-12,W,12);
+  return cv;
+}
+const pageURL=()=>location.href.split(/[?#]/)[0];
+async function sharePicture(){
+  const btn=$("shareBtn");btn.disabled=true;
+  try{
+    const cv=drawPicture();
+    const blob=await new Promise(r=>cv.toBlob(r,"image/png"));
+    const name=`Guest-houses-${MONTHS[view.getMonth()]}-${view.getFullYear()}.png`;
+    const file=new File([blob],name,{type:"image/png"});
+    const text=`Guest house availability – ${MONTHS[view.getMonth()]} ${view.getFullYear()}. Green = available, red = booked. Live calendar: ${pageURL()}`;
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      try{await navigator.share({files:[file],text});}catch(e){}
+    }else{
+      const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();
+      setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+    }
+  }finally{btn.disabled=false}
+}
+$("shareBtn").onclick=sharePicture;
 
 // ---------- events ----------
 $("grid").addEventListener("click",e=>{const d=e.target.closest(".day");if(d)openDay(d.dataset.day)});
